@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Job Description Matcher</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            text-align: center;
+            color: #0056b3;
+        }
+        form div {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="file"],
+        textarea {
+            width: calc(100% - 22px); /* Adjusting for padding and border */
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box; /* Include padding and border in the element's total width and height */
+        }
+        textarea {
+            height: 150px;
+            resize: vertical;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .hidden {
+            display: none;
+        }
+        #results {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        #results h2 {
+             margin-top: 0;
+        }
+        #matchingPhrases {
+            list-style-type: disc;
+            padding-left: 20px;
+        }
+        #matchingPhrases li {
+            margin-bottom: 5px;
+        }
+        #loading {
+            text-align: center;
+            font-style: italic;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Resume Job Description Matcher</h1>
+
+        <form id="resumeForm">
+            <div>
+                <label for="resume">Upload Resume (PDF):</label>
+                <input type="file" id="resume" accept=".pdf" required>
+            </div>
+            <div>
+                <label for="jobDescription">Enter Job Description:</label>
+                <textarea id="jobDescription" required></textarea>
+            </div>
+            <button type="submit">Analyze Match</button>
+        </form>
+
+        <div id="loading" class="hidden">Analyzing...</div>
+
+        <div id="results" class="hidden">
+            <h2>Match Results</h2>
+            <p><strong>Overall Message:</strong> <span id="message"></span></p>
+            <p><strong>Match Score:</strong> <span id="score"></span></p>
+            <h3>Matching Key Phrases:</h3>
+            <ul id="matchingPhrases">
+                </ul>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('resumeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const resumeFile = document.getElementById('resume').files[0];
+            const jobDescription = document.getElementById('jobDescription').value;
+            const resultsDiv = document.getElementById('results');
+            const loadingDiv = document.getElementById('loading');
+
+            if (!resumeFile || !jobDescription) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            // Hide previous results and show loading indicator
+            resultsDiv.classList.add('hidden');
+            loadingDiv.classList.remove('hidden');
+
+            const formData = new FormData();
+            formData.append('resume', resumeFile, resumeFile.name);
+            formData.append('jd_text', jobDescription); // Ensure this matches the Lambda's expected key
+
+            const lambdaUrl = 'https://cynoesahg2a54cnvtnhvtn2qgm0aicqe.lambda-url.us-east-1.on.aws/'; // Your Lambda Function URL
+
+            try {
+                const response = await fetch(lambdaUrl, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        // Note: The 'Content-Type' header for multipart/form-data with FormData
+                        // is typically set automatically by the browser, including the boundary.
+                        'Accept': 'application/json'
+                    }
+                });
+
+                loadingDiv.classList.add('hidden'); // Hide loading indicator
+
+                if (!response.ok) {
+                    const errorBody = await response.text(); // Read error response body
+                    console.error('Network response was not ok:', response.status, errorBody);
+                    alert(`Analysis failed: HTTP error! status: ${response.status}\nDetails: ${errorBody.substring(0, 200)}...`); // Show alert with status and snippet
+                    throw new Error(`HTTP error! status: ${response.status}, body: ${errorBody}`);
+                }
+
+                const data = await response.json();
+
+                // Display results
+                document.getElementById('score').textContent = data.score;
+                document.getElementById('message').textContent = data.message;
+
+                const matchingPhrasesList = document.getElementById('matchingPhrases');
+                matchingPhrasesList.innerHTML = ''; // Clear previous list items
+
+                if (data.matching_phrases && data.matching_phrases.length > 0) {
+                    data.matching_phrases.forEach(phrase => {
+                        const li = document.createElement('li');
+                        li.textContent = phrase;
+                        matchingPhrasesList.appendChild(li);
+                    });
+                } else {
+                    const li = document.createElement('li');
+                    li.textContent = 'No matching key phrases found.';
+                    matchingPhrasesList.appendChild(li);
+                }
+
+                // Show results section
+                resultsDiv.classList.remove('hidden');
+
+            } catch (error) {
+                loadingDiv.classList.add('hidden'); // Hide loading indicator even on error
+                console.error('Error:', error);
+                // Alert already shown for HTTP errors, show generic for others
+                if (!error.message.startsWith('HTTP error!')) {
+                     alert('An error occurred while analyzing the resume. Please try again.');
+                }
+            }
+        });
+    </script>
+
+</body>
+</html>
