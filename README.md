@@ -1,130 +1,86 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <style>
-        @page {
-            size: A4;
-            margin: 15mm;
-            background-color: #f4f7f6;
-        }
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            font-size: 10pt;
-            line-height: 1.5;
-            color: #2d3436;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            padding: 20px;
-            background-color: #ffffff;
-            border-radius: 8px;
-        }
-        .header {
-            border-bottom: 3px solid #00b894;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-        }
-        h1 { color: #2d3436; font-size: 22pt; margin: 0; }
-        h2 { color: #0984e3; font-size: 16pt; border-left: 4px solid #0984e3; padding-left: 10px; margin-top: 25px; }
-        h3 { color: #636e72; font-size: 12pt; margin-top: 15px; }
-        code {
-            background-color: #dfe6e9;
-            padding: 2px 4px;
-            border-radius: 4px;
-            font-family: 'Consolas', monospace;
-            font-size: 9pt;
-        }
-        pre {
-            background-color: #2d3436;
-            color: #fab1a0;
-            padding: 15px;
-            border-radius: 5px;
-            overflow-x: auto;
-            font-size: 9pt;
-            line-height: 1.4;
-        }
-        .step-box {
-            background-color: #f9f9f9;
-            border: 1px solid #dcdde1;
-            padding: 12px;
-            margin: 10px 0;
-            border-radius: 5px;
-        }
-        .badge {
-            display: inline-block;
-            background: #00b894;
-            color: white;
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 8pt;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <span class="badge">CONTAINERIZED DEPLOYMENT</span>
-            <h1>AI Resume Screener (Docker Edition)</h1>
-            <p>AWS Lambda function packaged as a Container Image for high-performance ML processing.</p>
-        </div>
+# AI Resume Screener (Docker Edition)
 
-        <h2>Project Overview</h2>
-        <p>This repository contains a serverless application that automates the resume screening process. By using <strong>Docker</strong>, we package the Python runtime, OS-level dependencies, and application code into a single immutable image, ensuring consistent behavior between development and production.</p>
+An automated talent matching backend that uses **Amazon Textract** for OCR and **Amazon Comprehend** for NLP to score candidate resumes against job descriptions.
 
-        <h2>Architecture</h2>
-        <ul>
-            <li><strong>Base Image:</strong> AWS Lambda Python 3.9 (Amazon Linux 2).</li>
-            <li><strong>OCR:</strong> Amazon Textract (PDF to Text).</li>
-            <li><strong>NLP:</strong> Amazon Comprehend (Key Phrase Extraction).</li>
-            <li><strong>Storage:</strong> Amazon DynamoDB.</li>
-        </ul>
+## 🚀 Why Docker?
+This project is packaged as a **Container Image** rather than a standard `.zip` deployment. This allows for:
+* **Larger Dependencies:** Up to 10GB image size (bypassing the 250MB Lambda limit).
+* **Consistency:** The Python 3.9 environment is identical in local testing and production.
+* **Simplified Deployment:** All libraries are "baked" into the image using the `Dockerfile`.
 
-        <h2>Local Development & Deployment</h2>
-        
-        <h3>1. Requirements</h3>
-        <p>Ensure your project folder contains:</p>
-        <ul>
-            <li><code>lambda_function.py</code>: The core logic script.</li>
-            <li><code>requirements.txt</code>: Must include <code>boto3</code> and <code>python-multipart</code>.</li>
-            <li><code>Dockerfile</code>: The provided configuration.</li>
-        </ul>
+---
 
-        <h3>2. Building the Image</h3>
-        <p>From your terminal in the project root:</p>
-        <pre>docker build -t resume-screener-lambda .</pre>
+## 🛠 Tech Stack
+* **Compute:** AWS Lambda (Container Image)
+* **OCR:** Amazon Textract (`detect_document_text`)
+* **NLP:** Amazon Comprehend (`detect_key_phrases`)
+* **Database:** Amazon DynamoDB
+* **Runtime:** Python 3.9
 
-        <h3>3. Pushing to AWS ECR</h3>
-        <div class="step-box">
-            <p>Before deploying to Lambda, you must push the image to <strong>Amazon Elastic Container Registry (ECR)</strong>:</p>
-            <ol>
-                <li>Authenticate: <code>aws ecr get-login-password --region your-region | docker login...</code></li>
-                <li>Tag: <code>docker tag resume-screener-lambda:latest [account-id].dkr.ecr.[region].amazonaws.com/resume-screener:latest</code></li>
-                <li>Push: <code>docker push [account-id].dkr.ecr.[region].amazonaws.com/resume-screener:latest</code></li>
-            </ol>
-        </div>
+---
 
-        <h2>Environment Variables</h2>
-        <p>Set these in the AWS Lambda console after deployment:</p>
-        <ul>
-            <li><code>DYNAMODB_TABLE_NAME</code>: Name of your target DynamoDB table.</li>
-            <li><code>AWS_REGION</code>: The region where your services are hosted.</li>
-        </ul>
+## 📋 Prerequisites
+1.  **AWS CLI** configured with appropriate permissions.
+2.  **Docker** installed and running.
+3.  **DynamoDB Table:** Created with a Partition Key named `submissionId` (String).
+4.  **IAM Role:** The Lambda needs a role with `Textract`, `Comprehend`, and `DynamoDB:PutItem` permissions.
 
-        <h2>Why Containerize?</h2>
-        <p>Using the <code>Dockerfile</code> approach instead of a .zip file provides:</p>
-        <ul>
-            <li><strong>Size:</strong> Support for images up to 10GB (vs 250MB for zip).</li>
-            <li><strong>Control:</strong> Precise control over the underlying OS and library versions.</li>
-            <li><strong>Testing:</strong> Use the <em>AWS Lambda Runtime Interface Emulator (RIE)</em> to test the container locally exactly as it will run in the cloud.</li>
-        </ul>
+---
 
-        <div style="margin-top: 30px; text-align: center; color: #b2bec3; font-size: 8pt;">
-            &copy; 2024 Serverless AI Solutions | GitHub Deployment Documentation v2.0
-        </div>
-    </div>
-</body>
-</html>
+## 📦 Local Setup & Deployment
+
+### 1. Build the Image
+Navigate to the project root (where the `Dockerfile` is located) and run:
+```bash
+docker build -t resume-screener .
+```
+
+### 2. Push to Amazon ECR
+You must host the image in the **Elastic Container Registry** before Lambda can use it.
+
+```bash
+# Login to ECR (Replace [region] and [account-id])
+aws ecr get-login-password --region [region] | docker login --username AWS --password-stdin [account-id].dkr.ecr.[region].amazonaws.com
+
+# Create a repository (if not already done)
+aws ecr create-repository --repository-name resume-screener
+
+# Tag and Push
+docker tag resume-screener:latest [account-id].dkr.ecr.[region].amazonaws.com/resume-screener:latest
+docker push [account-id].dkr.ecr.[region].amazonaws.com/resume-screener:latest
+```
+
+### 3. Create the Lambda Function
+1.  Go to the AWS Lambda Console -> **Create function**.
+2.  Select **Container image**.
+3.  Browse for your image in ECR.
+4.  Under **Configuration > Environment variables**, add:
+    * `DYNAMODB_TABLE_NAME`: Your table name.
+
+---
+
+## 📑 API Specification
+
+**Endpoint:** `POST` (via Function URL or API Gateway)  
+**Content-Type:** `multipart/form-data`
+
+### Request Fields:
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `resume` | File (.pdf) | The candidate's resume. |
+| `jd_text` | String | The full text of the job description. |
+
+### Example Response:
+```json
+{
+  "score": 12,
+  "matching_phrases": ["python", "aws", "docker", "sql"],
+  "message": "Match Score: 12"
+}
+```
+
+---
+
+## ⚠️ Known Limitations
+* **Text Truncation:** Amazon Comprehend has a 5,000-byte limit for synchronous calls. This script automatically truncates text longer than 5,000 characters.
+* **Timeouts:** OCR processing can be slow. Set your Lambda timeout to at least **30 seconds**.
